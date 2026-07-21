@@ -4,7 +4,7 @@
 ### AnyKernel setup
 # begin properties
 properties() { '
-kernel.string=Sultan Kernel for the Pixel 9 series
+kernel.string=Sultan Kernel for the Pixel 9 series (9, Pro, XL)
 do.devicecheck=0
 do.modules=0
 do.systemless=1
