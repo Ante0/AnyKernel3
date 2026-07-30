@@ -4,7 +4,7 @@
 ### AnyKernel setup
 # begin properties
 properties() { '
-kernel.string=Sultan Kernel for the Pixel 7 series (7, Pro)
+kernel.string=Sultan Kernel for the Pixel 7 series (7, Pro, 7A)
 do.devicecheck=0
 do.modules=0
 do.systemless=1
@@ -23,6 +23,9 @@ is_slot_device=1;
 . tools/ak3-core.sh;
 split_boot;
 flash_boot;
+rm -f "$AKHOME/Image.lz4"; # failsafe 
+rm -f "$home/Image.lz4" # failsafe
+#https://github.com/WildKernels/Sultan_KernelSU_SUSFS/issues/39
 
 # vendor_kernel_boot installation (for dtb)
 block=vendor_kernel_boot;
