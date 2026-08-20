@@ -23,10 +23,3 @@ is_slot_device=1;
 . tools/ak3-core.sh;
 split_boot;
 flash_boot;
-
-# vendor_kernel_boot installation (for dtb)
-block=vendor_kernel_boot;
-is_slot_device=1;
-reset_ak;
-split_boot;
-flash_boot;
