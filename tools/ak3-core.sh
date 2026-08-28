@@ -11,6 +11,20 @@ PATCH=$AKHOME/patch;
 RAMDISK=$AKHOME/ramdisk;
 SPLITIMG=$AKHOME/split_img;
 
+KSU_BIN=/data/adb/ksu/bin
+
+if [ -x "$KSU_BIN/magiskboot" ]; then
+  MAGISKBOOT="$KSU_BIN/magiskboot"
+else
+  MAGISKBOOT="$BIN/magiskboot"
+fi
+
+if [ -x "$KSU_BIN/busybox" ]; then
+  BUSYBOX="$KSU_BIN/busybox"
+else
+  BUSYBOX="$BIN/busybox"
+fi
+
 ### output/testing functions:
 # ui_print "<text>" [...]
 ui_print() {
@@ -155,13 +169,13 @@ unpack_ramdisk() {
   fi;
 
   if [ -f ramdisk.cpio ]; then
-    comp=$(magiskboot decompress ramdisk.cpio 2>&1 | grep -v 'raw' | sed -n 's;.*\[\(.*\)\];\1;p');
+    comp=$($MAGISKBOOT decompress ramdisk.cpio 2>&1 | grep -v 'raw' | sed -n 's;.*\[\(.*\)\];\1;p');
   else
     abort "No ramdisk found to unpack. Aborting...";
   fi;
   if [ "$comp" ]; then
     mv -f ramdisk.cpio ramdisk.cpio.$comp;
-    magiskboot decompress ramdisk.cpio.$comp ramdisk.cpio;
+    $MAGISKBOOT decompress ramdisk.cpio.$comp ramdisk.cpio;
     if [ $? != 0 ] && $comp --help 2>/dev/null; then
       echo "Attempting ramdisk unpack with busybox $comp..." >&2;
       $comp -dc ramdisk.cpio.$comp > ramdisk.cpio;
@@ -218,12 +232,12 @@ repack_ramdisk() {
 
   cd $AKHOME;
   if [ ! "$NO_MAGISK_CHECK" ]; then
-    magiskboot cpio ramdisk-new.cpio test;
+    $MAGISKBOOT cpio ramdisk-new.cpio test;
     magisk_patched=$?;
   fi;
-  [ "$magisk_patched" -eq 1 ] && magiskboot cpio ramdisk-new.cpio "extract .backup/.magisk $SPLITIMG/.magisk";
+  [ "$magisk_patched" -eq 1 ] && $MAGISKBOOT cpio ramdisk-new.cpio "extract .backup/.magisk $SPLITIMG/.magisk";
   if [ "$comp" ]; then
-    magiskboot compress=$comp ramdisk-new.cpio;
+    $MAGISKBOOT compress=$comp ramdisk-new.cpio;
     if [ $? != 0 ] && $comp --help 2>/dev/null; then
       echo "Attempting ramdisk repack with busybox $comp..." >&2;
       $comp -9c ramdisk-new.cpio > ramdisk-new.cpio.$comp;
@@ -323,25 +337,25 @@ flash_boot() {
     case $kernel in
       *Image*)
         if [ ! "$magisk_patched" -a ! "$NO_MAGISK_CHECK" ]; then
-          magiskboot cpio ramdisk.cpio test;
+          $MAGISKBOOT cpio ramdisk.cpio test;
           magisk_patched=$?;
         fi;
         if [ "$magisk_patched" -eq 1 ]; then
           ui_print " " "Magisk detected! Patching kernel so reflashing Magisk is not necessary...";
-          comp=$(magiskboot decompress kernel 2>&1 | grep -vE 'raw|zimage' | sed -n 's;.*\[\(.*\)\];\1;p');
-          (magiskboot split $kernel || magiskboot decompress $kernel kernel) >&2;
+          comp=$($MAGISKBOOT decompress kernel 2>&1 | grep -vE 'raw|zimage' | sed -n 's;.*\[\(.*\)\];\1;p');
+          ($MAGISKBOOT split $kernel || $MAGISKBOOT decompress $kernel kernel) >&2;
           if [ $? != 0 -a "$comp" ] && $comp --help 2>/dev/null; then
             echo "Attempting kernel unpack with busybox $comp..." >&2;
             $comp -dc $kernel > kernel;
           fi;
           # legacy SAR kernel string skip_initramfs -> want_initramfs
-          magiskboot hexpatch kernel 736B69705F696E697472616D6673 77616E745F696E697472616D6673 && needskernelpatch=1;
+          $MAGISKBOOT hexpatch kernel 736B69705F696E697472616D6673 77616E745F696E697472616D6673 && needskernelpatch=1;
           if [ "$(file_getprop $AKHOME/anykernel.sh do.modules)" == 1 ] && [ "$(file_getprop $AKHOME/anykernel.sh do.systemless)" == 1 ]; then
             strings kernel 2>/dev/null | grep -E -m1 'Linux version.*#' > $AKHOME/vertmp;
           fi;
           if [ "$needskernelpatch" ]; then
             if [ "$comp" ]; then
-              magiskboot compress=$comp kernel kernel.$comp;
+              $MAGISKBOOT compress=$comp kernel kernel.$comp;
               if [ $? != 0 ] && $comp --help 2>/dev/null; then
                 echo "Attempting kernel repack with busybox $comp..." >&2;
                 $comp -9c kernel > kernel.$comp;
@@ -350,17 +364,17 @@ flash_boot() {
             fi;
           else
             echo "Restoring untouched new kernel since no patching required..." >&2;
-            (magiskboot split -n $kernel || cp -f $kernel kernel) >&2;
+            ($MAGISKBOOT split -n $kernel || cp -f $kernel kernel) >&2;
           fi;
-          [ ! -f .magisk ] && magiskboot cpio ramdisk.cpio "extract .backup/.magisk .magisk";
+          [ ! -f .magisk ] && $MAGISKBOOT cpio ramdisk.cpio "extract .backup/.magisk .magisk";
           export $(cat .magisk);
           for fdt in dtb extra kernel_dtb recovery_dtbo; do
-            [ -f $fdt ] && magiskboot dtb $fdt patch; # remove dtb verity/avb
+            [ -f $fdt ] && $MAGISKBOOT dtb $fdt patch; # remove dtb verity/avb
           done;
         elif [ -d /data/data/me.weishu.kernelsu ] && [ "$(file_getprop $AKHOME/anykernel.sh do.modules)" == 1 ] && [ "$(file_getprop $AKHOME/anykernel.sh do.systemless)" == 1 ]; then
           ui_print " " "KernelSU detected! Setting up for kernel helper module...";
-          comp=$(magiskboot decompress kernel 2>&1 | grep -vE 'raw|zimage' | sed -n 's;.*\[\(.*\)\];\1;p');
-          (magiskboot split $kernel || magiskboot decompress $kernel kernel) >&2;
+          comp=$($MAGISKBOOT decompress kernel 2>&1 | grep -vE 'raw|zimage' | sed -n 's;.*\[\(.*\)\];\1;p');
+          ($MAGISKBOOT split $kernel || $MAGISKBOOT decompress $kernel kernel) >&2;
           if [ $? != 0 -a "$comp" ] && $comp --help 2>/dev/null; then
             echo "Attempting kernel unpack with busybox $comp..." >&2;
             $comp -dc $kernel > kernel;
@@ -375,7 +389,7 @@ flash_boot() {
           fi;
           rm -f stringstmp;
           if [ "$comp" ]; then
-            magiskboot compress=$comp kernel kernel.$comp;
+            $MAGISKBOOT compress=$comp kernel kernel.$comp;
             if [ $? != 0 ] && $comp --help 2>/dev/null; then
               echo "Attempting kernel repack with busybox $comp..." >&2;
               $comp -9c kernel > kernel.$comp;
@@ -398,7 +412,7 @@ flash_boot() {
       1) export PATCHVBMETAFLAG=true;;
       *) export PATCHVBMETAFLAG=false;;
     esac;
-    magiskboot repack $nocompflag $BOOTIMG $AKHOME/boot-new.img;
+    $MAGISKBOOT repack $nocompflag $BOOTIMG $AKHOME/boot-new.img;
   fi;
   if [ $? != 0 ]; then
     abort "Repacking image failed. Aborting...";
@@ -427,9 +441,9 @@ flash_boot() {
         /system/bin/dalvikvm -Xnoimage-dex2oat -cp $BIN/boot_signer-dexed.jar com.android.verity.BootSignature /$avbtype boot-new.img $pk8 $cert boot-new-signed.img;
       fi;
     else
-      if magiskboot verify boot.img; then
+      if $MAGISKBOOT verify boot.img; then
         echo "Signing with AVBv1 /$avbtype..." >&2;
-        magiskboot sign /$avbtype boot-new.img $cert $pk8;
+        $MAGISKBOOT sign /$avbtype boot-new.img $cert $pk8;
       fi;
     fi;
   fi;
