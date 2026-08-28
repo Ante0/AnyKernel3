@@ -16,16 +16,20 @@ KSU_BIN=/data/adb/ksu/bin;
 
 if [ -x "$KSU_BIN/magiskboot" ]; then
   MAGISKBOOT="$KSU_BIN/magiskboot";
+  ui_print "Using magiskboot from $MAGISKBOOT"
 elif [ -x "$BIN/magiskboot" ]; then
   MAGISKBOOT="$BIN/magiskboot";
+  ui_print "Using magiskboot from $MAGISKBOOT"
 else
   abort "magiskboot not found. Aborting...";
 fi;
 
 if [ -x "$KSU_BIN/busybox" ]; then
   BUSYBOX="$KSU_BIN/busybox";
+  ui_print "Using busybox from $BUSYBOX"
 elif [ -x "$BIN/busybox" ]; then
   BUSYBOX="$BIN/busybox";
+  ui_print "Using busybox from $BUSYBOX"
 else
   abort "busybox not found. Aborting...";
 fi;
