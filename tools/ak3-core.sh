@@ -11,19 +11,24 @@ PATCH=$AKHOME/patch;
 RAMDISK=$AKHOME/ramdisk;
 SPLITIMG=$AKHOME/split_img;
 
-KSU_BIN=/data/adb/ksu/bin
+# Prefer KernelSU's bundled tools, fall back to AnyKernel3 tools
+KSU_BIN=/data/adb/ksu/bin;
 
 if [ -x "$KSU_BIN/magiskboot" ]; then
-  MAGISKBOOT="$KSU_BIN/magiskboot"
+  MAGISKBOOT="$KSU_BIN/magiskboot";
+elif [ -x "$BIN/magiskboot" ]; then
+  MAGISKBOOT="$BIN/magiskboot";
 else
-  MAGISKBOOT="$BIN/magiskboot"
-fi
+  abort "magiskboot not found. Aborting...";
+fi;
 
 if [ -x "$KSU_BIN/busybox" ]; then
-  BUSYBOX="$KSU_BIN/busybox"
+  BUSYBOX="$KSU_BIN/busybox";
+elif [ -x "$BIN/busybox" ]; then
+  BUSYBOX="$BIN/busybox";
 else
-  BUSYBOX="$BIN/busybox"
-fi
+  abort "busybox not found. Aborting...";
+fi;
 
 ### output/testing functions:
 # ui_print "<text>" [...]
@@ -178,7 +183,7 @@ unpack_ramdisk() {
     $MAGISKBOOT decompress ramdisk.cpio.$comp ramdisk.cpio;
     if [ $? != 0 ] && $comp --help 2>/dev/null; then
       echo "Attempting ramdisk unpack with busybox $comp..." >&2;
-      $comp -dc ramdisk.cpio.$comp > ramdisk.cpio;
+      $BUSYBOX $comp -dc ramdisk.cpio.$comp > ramdisk.cpio;
     fi;
   fi;
 
@@ -240,7 +245,7 @@ repack_ramdisk() {
     $MAGISKBOOT compress=$comp ramdisk-new.cpio;
     if [ $? != 0 ] && $comp --help 2>/dev/null; then
       echo "Attempting ramdisk repack with busybox $comp..." >&2;
-      $comp -9c ramdisk-new.cpio > ramdisk-new.cpio.$comp;
+      $BUSYBOX $comp -9c ramdisk-new.cpio > ramdisk-new.cpio.$comp;
       [ $? != 0 ] && packfail=1;
       rm -f ramdisk-new.cpio;
     fi;
@@ -346,7 +351,7 @@ flash_boot() {
           ($MAGISKBOOT split $kernel || $MAGISKBOOT decompress $kernel kernel) >&2;
           if [ $? != 0 -a "$comp" ] && $comp --help 2>/dev/null; then
             echo "Attempting kernel unpack with busybox $comp..." >&2;
-            $comp -dc $kernel > kernel;
+            $BUYSBOX $comp -dc $kernel > kernel;
           fi;
           # legacy SAR kernel string skip_initramfs -> want_initramfs
           $MAGISKBOOT hexpatch kernel 736B69705F696E697472616D6673 77616E745F696E697472616D6673 && needskernelpatch=1;
@@ -358,7 +363,7 @@ flash_boot() {
               $MAGISKBOOT compress=$comp kernel kernel.$comp;
               if [ $? != 0 ] && $comp --help 2>/dev/null; then
                 echo "Attempting kernel repack with busybox $comp..." >&2;
-                $comp -9c kernel > kernel.$comp;
+                $BUSYBOX $comp -9c kernel > kernel.$comp;
               fi;
               mv -f kernel.$comp kernel;
             fi;
@@ -377,7 +382,7 @@ flash_boot() {
           ($MAGISKBOOT split $kernel || $MAGISKBOOT decompress $kernel kernel) >&2;
           if [ $? != 0 -a "$comp" ] && $comp --help 2>/dev/null; then
             echo "Attempting kernel unpack with busybox $comp..." >&2;
-            $comp -dc $kernel > kernel;
+            $BUSYBOX $comp -dc $kernel > kernel;
           fi;
           strings kernel > stringstmp 2>/dev/null;
           if grep -q -E '^/data/adb/ksud$' stringstmp; then
@@ -392,7 +397,7 @@ flash_boot() {
             $MAGISKBOOT compress=$comp kernel kernel.$comp;
             if [ $? != 0 ] && $comp --help 2>/dev/null; then
               echo "Attempting kernel repack with busybox $comp..." >&2;
-              $comp -9c kernel > kernel.$comp;
+              $BUSYBOX $comp -9c kernel > kernel.$comp;
             fi;
             mv -f kernel.$comp kernel;
           fi;
